@@ -10,12 +10,13 @@ from typing import AsyncGenerator
 # 开启 INFO 级别日志，终端可见每个流式 token
 logging.basicConfig(level=logging.INFO, format="%(name)s | %(message)s")
 
-from fastapi import FastAPI, File, HTTPException, UploadFile
+from fastapi import FastAPI, File, HTTPException, Request, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, StreamingResponse
 from pydantic import BaseModel
 
 from agent.agent import CvboostAgent
+from agent.analytics import AnalyticsMiddleware, collector
 from agent.config import (
     MODEL_NAME,
     SUCCESS_ACCURACY,
@@ -31,6 +32,8 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+app.add_middleware(AnalyticsMiddleware)
 
 
 # ── Request / Response models ──────────────────────────────────────
@@ -80,6 +83,18 @@ async def health():
             "concurrent_users": SUCCESS_CONCURRENT_USERS,
         },
     }
+
+
+@app.get("/api/v1/analytics")
+async def analytics():
+    """返回访问统计数据"""
+    return collector.stats()
+
+
+@app.post("/api/v1/analytics/track")
+async def analytics_track(request: Request):
+    """前端埋点：记录页面访问事件"""
+    return {"ok": True}
 
 
 @app.get("/")

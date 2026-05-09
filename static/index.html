@@ -657,6 +657,9 @@ async function copyResult() {
 //  页面启动
 // ═══════════════════════════════════════════════════════════════════
 checkHealth();
+
+// 页面访问埋点
+fetch('/api/v1/analytics/track', { method: 'POST' }).catch(() => {});
 </script>
 
 </body>
