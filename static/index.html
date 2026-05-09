@@ -1,0 +1,663 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>cvboost — 简历优化专家</title>
+<style>
+  :root {
+    --primary: #4f46e5;
+    --primary-hover: #4338ca;
+    --bg: #f8fafc;
+    --card-bg: #ffffff;
+    --text: #1e293b;
+    --text-muted: #64748b;
+    --border: #e2e8f0;
+    --danger: #ef4444;
+    --success: #10b981;
+    --radius: 12px;
+    --shadow: 0 1px 3px rgba(0,0,0,.08), 0 1px 2px rgba(0,0,0,.06);
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans SC", sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+  }
+
+  /* ── 顶部导航 ──────────────────────────────── */
+  .navbar {
+    background: var(--card-bg);
+    border-bottom: 1px solid var(--border);
+    padding: 0 24px;
+    height: 56px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    box-shadow: var(--shadow);
+  }
+  .navbar .logo {
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--primary);
+    letter-spacing: -.5px;
+  }
+  .navbar .status {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    color: var(--text-muted);
+  }
+  .navbar .status .dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--success);
+  }
+  .navbar .status .dot.offline {
+    background: var(--danger);
+  }
+
+  /* ── 主布局 ──────────────────────────────── */
+  .container {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 24px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+    min-height: calc(100vh - 56px);
+  }
+  @media (max-width: 768px) {
+    .container { grid-template-columns: 1fr; }
+  }
+
+  /* ── 卡片 ──────────────────────────────────── */
+  .card {
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    padding: 24px;
+    display: flex;
+    flex-direction: column;
+  }
+  .card-title {
+    font-size: 15px;
+    font-weight: 600;
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  /* ── 模式切换 ──────────────────────────────── */
+  .tabs {
+    display: flex;
+    gap: 0;
+    margin-bottom: 16px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+  }
+  .tab-btn {
+    flex: 1;
+    padding: 8px 16px;
+    border: none;
+    background: var(--card-bg);
+    cursor: pointer;
+    font-size: 13px;
+    color: var(--text-muted);
+    transition: all .15s;
+  }
+  .tab-btn.active {
+    background: var(--primary);
+    color: #fff;
+    font-weight: 500;
+  }
+
+  /* ── 表单 ──────────────────────────────────── */
+  textarea, input[type="text"], select {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    font-size: 14px;
+    font-family: inherit;
+    resize: vertical;
+    transition: border-color .15s;
+  }
+  textarea:focus, input:focus {
+    outline: none;
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(79,70,229,.1);
+  }
+  textarea {
+    min-height: 200px;
+    flex: 1;
+    line-height: 1.6;
+  }
+  .form-group {
+    margin-top: 12px;
+  }
+  .form-group label {
+    display: block;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text-muted);
+    margin-bottom: 4px;
+  }
+  .form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+  }
+
+  /* ── 文件上传区域 ──────────────────────────── */
+  .drop-zone {
+    border: 2px dashed var(--border);
+    border-radius: var(--radius);
+    padding: 40px 20px;
+    text-align: center;
+    cursor: pointer;
+    transition: all .15s;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+  }
+  .drop-zone:hover, .drop-zone.drag-over {
+    border-color: var(--primary);
+    background: rgba(79,70,229,.04);
+  }
+  .drop-zone .icon {
+    font-size: 36px;
+    opacity: .6;
+  }
+  .drop-zone .hint {
+    font-size: 13px;
+    color: var(--text-muted);
+  }
+  .drop-zone .file-name {
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--primary);
+    margin-top: 4px;
+  }
+  #fileInput { display: none; }
+
+  /* ── 按钮 ──────────────────────────────────── */
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 10px 20px;
+    border: none;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all .15s;
+    margin-top: 16px;
+  }
+  .btn-primary {
+    background: var(--primary);
+    color: #fff;
+  }
+  .btn-primary:hover { background: var(--primary-hover); }
+  .btn-primary:disabled {
+    opacity: .5;
+    cursor: not-allowed;
+  }
+  .btn-outline {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--text);
+  }
+  .btn-outline:hover { background: var(--bg); }
+
+  /* ── 加载动画 ──────────────────────────────── */
+  .spinner {
+    width: 16px; height: 16px;
+    border: 2px solid rgba(255,255,255,.3);
+    border-top-color: #fff;
+    border-radius: 50%;
+    animation: spin .6s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ── 结果区 ────────────────────────────────── */
+  .result-area {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+  }
+  .result-content {
+    flex: 1;
+    background: #f1f5f9;
+    border-radius: 8px;
+    padding: 16px;
+    overflow-y: auto;
+    max-height: 55vh;
+    font-size: 14px;
+    line-height: 1.8;
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
+  .result-content.empty {
+    color: var(--text-muted);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+  }
+  /* 流式输出时末尾的光标闪烁效果 */
+  .result-content.streaming::after {
+    content: "▊";
+    animation: blink .8s infinite;
+    color: var(--primary);
+  }
+  @keyframes blink { 0%,100% { opacity: 1; } 50% { opacity: 0; } }
+  .result-stats {
+    display: flex;
+    gap: 16px;
+    margin-top: 12px;
+    font-size: 12px;
+    color: var(--text-muted);
+  }
+</style>
+</head>
+<body>
+
+<!-- ── 顶部导航栏 ──────────────────────────────────── -->
+<nav class="navbar">
+  <span class="logo">cvboost</span>
+  <span class="status">
+    <span id="statusDot" class="dot"></span>
+    <span id="statusText">检测中...</span>
+  </span>
+</nav>
+
+<!-- ── 主体两栏布局 ────────────────────────────────── -->
+<div class="container">
+
+  <!-- 左栏：输入区 -->
+  <div class="card" id="inputCard">
+    <div class="card-title">📋 简历输入</div>
+
+    <!-- 模式切换标签 -->
+    <div class="tabs">
+      <button class="tab-btn active" data-mode="text">✏️ 文本输入</button>
+      <button class="tab-btn" data-mode="file">📁 文件上传</button>
+    </div>
+
+    <!-- 模式一：文本输入 -->
+    <div id="textMode">
+      <textarea id="resumeText"
+        placeholder="在此粘贴简历内容...&#10;&#10;例如：&#10;张三 | 高级前端工程师 | 5年经验&#10;工作经历：&#10;2020-2024 ABC科技 — 前端技术负责人..."></textarea>
+    </div>
+
+    <!-- 模式二：文件上传（默认隐藏） -->
+    <div id="fileMode" style="display:none;">
+      <div class="drop-zone" id="dropZone">
+        <span class="icon">📄</span>
+        <span>点击或拖拽上传简历文件</span>
+        <span class="hint">支持 .pdf / .docx / .doc / .txt</span>
+        <span class="file-name" id="fileName"></span>
+      </div>
+      <input type="file" id="fileInput" accept=".pdf,.docx,.doc,.txt">
+    </div>
+
+    <!-- 可选参数：目标岗位 / 目标行业 / 指定模块 -->
+    <div class="form-row">
+      <div class="form-group">
+        <label>🎯 目标岗位 JD（可选）</label>
+        <input type="text" id="jobDesc" placeholder="如：高级前端工程师，要求 React、TypeScript...">
+      </div>
+      <div class="form-group">
+        <label>🏭 目标行业（可选）</label>
+        <input type="text" id="industry" placeholder="如：互联网/金融/医疗">
+      </div>
+    </div>
+    <div class="form-group">
+      <label>📦 优化模块（可选，用逗号分隔，留空表示全简历优化）</label>
+      <input type="text" id="modules" placeholder="如：工作经历, 项目经历, 技能特长">
+    </div>
+
+    <div style="display:flex;gap:12px;">
+      <button class="btn btn-primary" id="optimizeBtn" onclick="startOptimize()" style="flex:1;">
+        🚀 开始优化
+      </button>
+      <button class="btn btn-outline" id="cancelBtn" onclick="cancelOptimize()" style="display:none;">
+        ⏹ 取消
+      </button>
+    </div>
+  </div>
+
+  <!-- 右栏：结果区 -->
+  <div class="card result-area">
+    <div class="card-title">📝 优化结果</div>
+    <div class="result-content empty" id="resultContent">
+      点击「开始优化」查看 AI 实时生成的简历优化建议
+    </div>
+    <div class="result-stats" id="resultStats" style="display:none;">
+      <span id="resultTime"></span>
+      <span id="resultChars"></span>
+    </div>
+    <button class="btn btn-outline" id="copyBtn" style="display:none;" onclick="copyResult()">
+      📋 复制结果
+    </button>
+  </div>
+
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════════════════
+//  配置：后端 API 地址
+// ═══════════════════════════════════════════════════════════════════
+const API_BASE = 'http://127.0.0.1:8000';
+
+// ═══════════════════════════════════════════════════════════════════
+//  DOM 元素引用
+// ═══════════════════════════════════════════════════════════════════
+const $ = (sel) => document.querySelector(sel);
+const statusDot = $('#statusDot');
+const statusText = $('#statusText');
+const resumeText = $('#resumeText');
+const jobDesc = $('#jobDesc');
+const industry = $('#industry');
+const modules = $('#modules');
+const resultContent = $('#resultContent');
+const resultStats = $('#resultStats');
+const resultTime = $('#resultTime');
+const resultChars = $('#resultChars');
+const optimizeBtn = $('#optimizeBtn');
+const copyBtn = $('#copyBtn');
+const dropZone = $('#dropZone');
+const fileInput = $('#fileInput');
+const fileName = $('#fileName');
+const textMode = $('#textMode');
+const fileMode = $('#fileMode');
+
+// ═══════════════════════════════════════════════════════════════════
+//  全局状态
+// ═══════════════════════════════════════════════════════════════════
+let currentMode = 'text';        // 当前模式：'text' | 'file'
+let selectedFile = null;        // 已选择的文件对象
+let abortController = null;     // 用于取消流式请求的 AbortController
+
+// ═══════════════════════════════════════════════════════════════════
+//  初始化 — 页面加载时检测后端健康状态
+// ═══════════════════════════════════════════════════════════════════
+async function checkHealth() {
+  try {
+    const res = await fetch(`${API_BASE}/health`);
+    if (res.ok) {
+      const data = await res.json();
+      statusDot.className = 'dot';
+      statusText.textContent = `服务在线 · ${data.model}`;
+    }
+  } catch {
+    statusDot.className = 'dot offline';
+    statusText.textContent = '服务离线';
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════
+//  模式切换：文本输入 <-> 文件上传
+// ═══════════════════════════════════════════════════════════════════
+document.querySelectorAll('.tab-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    currentMode = btn.dataset.mode;
+    if (currentMode === 'text') {
+      textMode.style.display = 'block';
+      fileMode.style.display = 'none';
+    } else {
+      textMode.style.display = 'none';
+      fileMode.style.display = 'block';
+    }
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════
+//  文件上传：点击上传区域触发文件选择
+// ═══════════════════════════════════════════════════════════════════
+dropZone.addEventListener('click', () => fileInput.click());
+
+// 拖拽上传支持
+dropZone.addEventListener('dragover', (e) => {
+  e.preventDefault();
+  dropZone.classList.add('drag-over');
+});
+dropZone.addEventListener('dragleave', () => {
+  dropZone.classList.remove('drag-over');
+});
+dropZone.addEventListener('drop', (e) => {
+  e.preventDefault();
+  dropZone.classList.remove('drag-over');
+  // 获取拖拽的文件并同步到 fileInput
+  const files = e.dataTransfer.files;
+  if (files.length > 0) {
+    // DataTransfer 是只读的，无法直接赋值给 input[type=file]
+    // 因此这里仅更新显示，实际上传时使用 e.dataTransfer.files
+    selectedFile = files[0];
+    fileName.textContent = selectedFile.name;
+  }
+});
+
+// 文件选择事件
+fileInput.addEventListener('change', () => {
+  if (fileInput.files.length > 0) {
+    selectedFile = fileInput.files[0];
+    fileName.textContent = selectedFile.name;
+  }
+});
+
+// ═══════════════════════════════════════════════════════════════════
+//  核心函数：开始优化（入口，根据当前模式选择不同策略）
+// ═══════════════════════════════════════════════════════════════════
+async function startOptimize() {
+  // 验证输入
+  if (currentMode === 'text') {
+    const text = resumeText.value.trim();
+    if (!text) {
+      alert('请先输入简历内容');
+      return;
+    }
+  } else {
+    if (!selectedFile) {
+      alert('请先上传简历文件');
+      return;
+    }
+  }
+
+  // 重置界面状态
+  resultContent.textContent = '';
+  resultContent.classList.remove('empty', 'streaming');
+  resultStats.style.display = 'none';
+  copyBtn.style.display = 'none';
+  optimizeBtn.style.display = 'none';
+  cancelBtn.style.display = 'flex';
+
+  // 创建新的 AbortController，用于支持取消请求
+  abortController = new AbortController();
+  const startTime = Date.now();
+
+  try {
+    if (currentMode === 'text') {
+      // ── 文本模式：调用流式接口 /api/v1/optimize/stream ──
+      cancelBtn.innerHTML = '<span class="spinner"></span> 取消';
+      await streamOptimize(abortController.signal);
+    } else {
+      // ── 文件模式：调用文件上传接口 /api/v1/optimize/file ──
+      cancelBtn.innerHTML = '<span class="spinner"></span> 取消';
+      await fileOptimize(abortController.signal);
+    }
+
+    // 显示统计信息
+    const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
+    resultTime.textContent = `⏱ 耗时 ${elapsed}s`;
+    resultChars.textContent = `📊 共 ${resultContent.textContent.length} 字符`;
+    resultStats.style.display = 'flex';
+    copyBtn.style.display = 'flex';
+    resultContent.classList.remove('streaming');
+
+  } catch (err) {
+    if (err.name === 'AbortError') {
+      resultContent.textContent += '\n\n[已取消]';
+    } else {
+      resultContent.textContent = `[错误] ${err.message}`;
+      resultContent.classList.remove('streaming', 'empty');
+    }
+  } finally {
+    optimizeBtn.style.display = 'flex';
+    optimizeBtn.disabled = false;
+    optimizeBtn.innerHTML = '🚀 开始优化';
+    cancelBtn.style.display = 'none';
+    cancelBtn.innerHTML = '⏹ 取消';
+    abortController = null;
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════
+//  流式优化（文本模式）：POST JSON 到 /api/v1/optimize/stream
+// ═══════════════════════════════════════════════════════════════════
+async function streamOptimize(signal) {
+  // 构造请求体，与后端 OptimizeRequest 模型对应
+  const body = {
+    resume_text: resumeText.value.trim(),
+    modules: parseModules(modules.value),
+    job_description: jobDesc.value.trim() || null,
+    industry: industry.value.trim() || null,
+  };
+
+  // 发起流式请求
+  const response = await fetch(`${API_BASE}/api/v1/optimize/stream`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+    signal,  // 绑定 AbortSignal，支持取消
+  });
+
+  if (!response.ok) {
+    const errText = await response.text();
+    throw new Error(`请求失败 (${response.status}): ${errText}`);
+  }
+
+  console.log(response);
+  
+  // 流式读取并实时渲染
+  await readStreamBody(response);
+}
+
+// ═══════════════════════════════════════════════════════════════════
+//  流式优化（文件模式）：POST multipart/form-data 到
+//  /api/v1/optimize/file/stream，后端解析文件后流式返回优化结果
+// ═══════════════════════════════════════════════════════════════════
+async function fileOptimize(signal) {
+  // 构造 multipart/form-data 请求体
+  const formData = new FormData();
+  formData.append('file', selectedFile);
+
+  // 发起流式文件上传请求
+  const response = await fetch(`${API_BASE}/api/v1/optimize/file/stream`, {
+    method: 'POST',
+    body: formData,
+    signal,  // 绑定 AbortSignal，支持取消
+  });
+
+  if (!response.ok) {
+    const errData = await response.json().catch(() => ({}));
+    throw new Error(errData.detail || `请求失败 (${response.status})`);
+  }
+
+  // 流式读取并实时渲染
+  await readStreamBody(response);
+}
+
+// ═══════════════════════════════════════════════════════════════════
+//  公共函数：读取 ReadableStream 响应，逐块追加到结果区
+//  后端返回 text/plain 流，每个 chunk 是 LLM 的一个 token
+//  通过 AbortSignal 绑定到请求，支持中途取消
+// ═══════════════════════════════════════════════════════════════════
+async function readStreamBody(response) {
+  resultContent.classList.add('streaming');
+  resultContent.classList.remove('empty');
+
+  // 获取响应的可读流
+  const reader = response.body.getReader();
+  // TextDecoder 用于将字节流解码为 UTF-8 字符串
+  const decoder = new TextDecoder('utf-8');
+
+  // 循环读取流中的每个分块，直到流结束
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;  // 流结束，退出循环
+
+    // 将 Uint8Array 字节块解码为文本
+    const chunk = decoder.decode(value, { stream: true });
+    console.log(chunk);
+    // 追加到结果区域，实现逐字打字效果
+    resultContent.textContent += chunk;
+    // 自动滚动到底部，保持最新内容可见
+    resultContent.scrollTop = resultContent.scrollHeight;
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════
+//  工具函数：解析模块输入（逗号分隔的字符串 → 字符串数组）
+//  例如 "工作经历, 项目经历" → ["工作经历", "项目经历"]
+// ═══════════════════════════════════════════════════════════════════
+function parseModules(input) {
+  if (!input || !input.trim()) return null;
+  return input
+    .split(',')
+    .map(s => s.trim())
+    .filter(s => s.length > 0);
+}
+
+// ═══════════════════════════════════════════════════════════════════
+//  取消正在进行的优化请求
+// ═══════════════════════════════════════════════════════════════════
+function cancelOptimize() {
+  if (abortController) {
+    abortController.abort();  // 触发 fetch 的 AbortError
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════
+//  复制结果到剪贴板
+// ═══════════════════════════════════════════════════════════════════
+async function copyResult() {
+  const text = resultContent.textContent;
+  try {
+    await navigator.clipboard.writeText(text);
+    // 短暂视觉反馈
+    const orig = copyBtn.textContent;
+    copyBtn.textContent = '✅ 已复制!';
+    setTimeout(() => { copyBtn.textContent = orig; }, 1500);
+  } catch {
+    // 降级方案：使用传统方法
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand('copy');
+    document.body.removeChild(ta);
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════
+//  页面启动
+// ═══════════════════════════════════════════════════════════════════
+checkHealth();
+</script>
+
+</body>
+</html>
